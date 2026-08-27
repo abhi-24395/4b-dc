@@ -92,6 +92,14 @@ async function main() {
           ` : ''}
         </tbody>
       </table>
+
+      <div class="signature-row">
+        <div class="signature-block">
+          <p class="for-company">For ${escapeHtml(settings.company_name)}</p>
+          <div class="seal-box">Seal</div>
+          <p class="sign-line">Authorised Signatory</p>
+        </div>
+      </div>
     </div>
   `;
 }

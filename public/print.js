@@ -29,8 +29,6 @@ async function main() {
   const challan = await challanRes.json();
   const settings = await settingsRes.json();
 
-  const showAmountColumn = challan.items.length > 1;
-
   document.title = `Delivery Challan ${challan.serial_number}`;
 
   content.innerHTML = `
@@ -71,7 +69,7 @@ async function main() {
             <th>Item Name</th>
             <th class="num">Qty</th>
             <th class="num">Price</th>
-            ${showAmountColumn ? '<th class="num">Amount</th>' : ''}
+            <th class="num">Amount</th>
           </tr>
         </thead>
         <tbody>
@@ -81,15 +79,13 @@ async function main() {
               <td>${escapeHtml(item.item_name)}</td>
               <td class="num">${item.quantity}</td>
               <td class="num">${formatMoney(item.price)}</td>
-              ${showAmountColumn ? `<td class="num">${formatMoney(item.amount)}</td>` : ''}
+              <td class="num">${formatMoney(item.amount)}</td>
             </tr>
           `).join('')}
-          ${showAmountColumn ? `
-            <tr class="totals-row">
-              <td colspan="4" style="text-align:right;">Total</td>
-              <td class="num">${formatMoney(challan.items.reduce((sum, i) => sum + Number(i.amount || 0), 0))}</td>
-            </tr>
-          ` : ''}
+          <tr class="totals-row">
+            <td colspan="4" style="text-align:right;">Total</td>
+            <td class="num">${formatMoney(challan.items.reduce((sum, i) => sum + Number(i.amount || 0), 0))}</td>
+          </tr>
         </tbody>
       </table>
 

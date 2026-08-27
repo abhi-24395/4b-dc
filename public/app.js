@@ -20,6 +20,11 @@ async function api(path, options) {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
+  if (res.status === 401 && path !== '/api/me' && path !== '/api/login') {
+    currentRole = null;
+    await renderLogin();
+    throw new Error('Session expired, please sign in again');
+  }
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
     try {
@@ -47,6 +52,51 @@ function escapeHtml(str) {
   }[c]));
 }
 
+// ---------- Auth ----------
+
+let currentRole = null;
+
+function applyRoleToChrome() {
+  document.getElementById('topbar').hidden = !currentRole;
+  document.getElementById('nav-settings').hidden = currentRole !== 'admin';
+}
+
+async function renderLogin() {
+  document.getElementById('topbar').hidden = true;
+  const tpl = document.getElementById('tpl-login');
+  app.replaceChildren(tpl.content.cloneNode(true));
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('login-error');
+    errorEl.hidden = true;
+    try {
+      const { role } = await api('/api/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: document.getElementById('login-id').value.trim(),
+          password: document.getElementById('login-password').value,
+        }),
+      });
+      currentRole = role;
+      applyRoleToChrome();
+      location.hash = '#/list';
+      await router();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.hidden = false;
+    }
+  });
+}
+
+document.getElementById('logout-link').addEventListener('click', async (e) => {
+  e.preventDefault();
+  await api('/api/logout', { method: 'POST' });
+  currentRole = null;
+  applyRoleToChrome();
+  await renderLogin();
+});
+
 // ---------- Routing ----------
 
 function setActiveNav(name) {
@@ -56,6 +106,11 @@ function setActiveNav(name) {
 }
 
 async function router() {
+  if (!currentRole) {
+    await renderLogin();
+    return;
+  }
+
   const hash = location.hash || '#/list';
   const [, route, param] = hash.match(/^#\/(\w+)(?:\/(.+))?$/) || [];
 
@@ -70,6 +125,11 @@ async function router() {
       setActiveNav('list');
       await renderForm(param);
     } else if (route === 'settings') {
+      if (currentRole !== 'admin') {
+        toast('Settings is admin-only', true);
+        location.hash = '#/list';
+        return;
+      }
       setActiveNav('settings');
       await renderSettings();
     } else {
@@ -81,7 +141,12 @@ async function router() {
 }
 
 window.addEventListener('hashchange', router);
-window.addEventListener('DOMContentLoaded', router);
+window.addEventListener('DOMContentLoaded', async () => {
+  const { role } = await api('/api/me');
+  currentRole = role;
+  applyRoleToChrome();
+  await router();
+});
 
 // ---------- List view ----------
 

@@ -7,16 +7,37 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="topbar">
+  <header class="topbar" id="topbar" hidden>
     <h1>Delivery Challan</h1>
     <nav>
       <a href="#/list" data-nav="list">Challans</a>
       <a href="#/new" data-nav="new">+ New Challan</a>
-      <a href="#/settings" data-nav="settings">Settings</a>
+      <a href="#/settings" data-nav="settings" id="nav-settings">Settings</a>
+      <a href="#" id="logout-link">Logout</a>
     </nav>
   </header>
 
   <main id="app"></main>
+
+  <template id="tpl-login">
+    <section class="panel login-panel">
+      <h2>Sign in</h2>
+      <form id="login-form">
+        <label>
+          ID / Email
+          <input type="text" id="login-id" autocomplete="username" required />
+        </label>
+        <label>
+          Password
+          <input type="password" id="login-password" autocomplete="current-password" required />
+        </label>
+        <p id="login-error" class="login-error" hidden></p>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Sign in</button>
+        </div>
+      </form>
+    </section>
+  </template>
 
   <template id="tpl-list">
     <section class="panel">

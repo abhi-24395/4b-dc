@@ -16,6 +16,10 @@ body {
   color: var(--text);
 }
 
+.topbar[hidden] {
+  display: none;
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -233,6 +237,17 @@ input[readonly] {
 
 .logo-preview[hidden] {
   display: none;
+}
+
+.login-panel {
+  max-width: 360px;
+  margin: 60px auto;
+}
+
+.login-error {
+  color: #b91c1c;
+  font-size: 0.88rem;
+  margin: 4px 0 0;
 }
 
 .toast {

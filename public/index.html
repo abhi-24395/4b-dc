@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delivery Challan</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Delivery Challan</h1>
+    <nav>
+      <a href="#/list" data-nav="list">Challans</a>
+      <a href="#/new" data-nav="new">+ New Challan</a>
+      <a href="#/settings" data-nav="settings">Settings</a>
+    </nav>
+  </header>
+
+  <main id="app"></main>
+
+  <template id="tpl-list">
+    <section class="panel">
+      <div class="panel-header">
+        <input type="search" id="search-input" placeholder="Search by serial number or party name..." />
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Serial No.</th>
+            <th>Date</th>
+            <th>Party</th>
+            <th>Vehicle No.</th>
+            <th>Amount</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="challan-rows"></tbody>
+      </table>
+      <p id="empty-state" class="empty-state" hidden>No delivery challans yet. Create your first one.</p>
+    </section>
+  </template>
+
+  <template id="tpl-form">
+    <section class="panel">
+      <h2 id="form-title">New Delivery Challan</h2>
+      <form id="challan-form">
+        <div class="form-grid">
+          <label>
+            Serial Number
+            <input type="text" id="f-serial" readonly />
+          </label>
+          <label>
+            Location *
+            <select id="f-location" required></select>
+          </label>
+          <label>
+            Date *
+            <input type="date" id="f-date" required />
+          </label>
+        </div>
+
+        <fieldset>
+          <legend>Party (Consignee) Details</legend>
+          <div class="form-grid">
+            <label>
+              Party Name *
+              <input type="text" id="f-party-name" required />
+            </label>
+            <label>
+              GSTIN
+              <input type="text" id="f-party-gstin" />
+            </label>
+            <label class="span-2">
+              Address
+              <textarea id="f-party-address" rows="2"></textarea>
+            </label>
+            <label>
+              Vehicle Number
+              <input type="text" id="f-vehicle" />
+            </label>
+            <label>
+              Place of Supply
+              <input type="text" id="f-place" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Items</legend>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Description *</th>
+                <th>HSN/SAC</th>
+                <th>Qty</th>
+                <th>Unit</th>
+                <th>Rate</th>
+                <th>Amount</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="items-body"></tbody>
+          </table>
+          <button type="button" id="add-item-btn" class="btn-secondary">+ Add Item</button>
+          <div class="totals">Total: <strong id="grand-total">0.00</strong></div>
+        </fieldset>
+
+        <label>
+          Remarks
+          <textarea id="f-remarks" rows="2"></textarea>
+        </label>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Save Challan</button>
+          <a href="#/list" class="btn-secondary">Cancel</a>
+        </div>
+      </form>
+    </section>
+  </template>
+
+  <template id="tpl-item-row">
+    <tr class="item-row">
+      <td><input type="text" class="item-description" required /></td>
+      <td><input type="text" class="item-hsn" /></td>
+      <td><input type="number" class="item-qty" step="any" min="0" value="1" /></td>
+      <td><input type="text" class="item-unit" /></td>
+      <td><input type="number" class="item-rate" step="any" min="0" value="0" /></td>
+      <td class="item-amount">0.00</td>
+      <td><button type="button" class="remove-item-btn" title="Remove item">&times;</button></td>
+    </tr>
+  </template>
+
+  <template id="tpl-settings">
+    <section class="panel">
+      <h2>Settings</h2>
+      <form id="settings-form">
+        <fieldset>
+          <legend>Your Company</legend>
+          <div class="form-grid">
+            <label>
+              Company Name
+              <input type="text" id="s-company-name" />
+            </label>
+            <label>
+              GSTIN
+              <input type="text" id="s-company-gstin" />
+            </label>
+            <label class="span-2">
+              Address
+              <textarea id="s-company-address" rows="2"></textarea>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Auto Serial Number</legend>
+          <p class="hint">
+            Serials are generated automatically as <code>DDMMYYYY/LOCATION/SEQ</code>,
+            e.g. <code>11082026/BLR/01</code>. The sequence number resets to 01 for
+            each location at the start of every day.
+          </p>
+          <div class="form-grid">
+            <label>
+              Sequence Padding (digits)
+              <input type="number" id="s-padding" min="1" max="10" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Locations</legend>
+          <ul id="location-list" class="location-list"></ul>
+        </fieldset>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">Save Settings</button>
+        </div>
+      </form>
+    </section>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>

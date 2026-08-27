@@ -102,8 +102,7 @@ async function renderList() {
       tr.innerHTML = `
         <td>${escapeHtml(c.serial_number)}</td>
         <td>${escapeHtml(c.challan_date)}</td>
-        <td>${escapeHtml(c.party_name)}</td>
-        <td>${escapeHtml(c.vehicle_number)}</td>
+        <td>${escapeHtml(c.to_contact_name)}</td>
         <td>${formatMoney(c.total)}</td>
         <td class="row-actions">
           <a href="print.html?id=${c.id}" target="_blank">Print</a>
@@ -139,40 +138,44 @@ async function renderList() {
 
 // ---------- Form view (new / edit) ----------
 
+function renumberItemRows() {
+  document.querySelectorAll('#items-body .item-row').forEach((row, idx) => {
+    row.querySelector('.item-sl').textContent = idx + 1;
+  });
+}
+
 function addItemRow(item) {
   const tpl = document.getElementById('tpl-item-row');
   const row = tpl.content.firstElementChild.cloneNode(true);
   const itemsBody = document.getElementById('items-body');
 
-  const description = row.querySelector('.item-description');
-  const hsn = row.querySelector('.item-hsn');
+  const name = row.querySelector('.item-name');
   const qty = row.querySelector('.item-qty');
-  const unit = row.querySelector('.item-unit');
-  const rate = row.querySelector('.item-rate');
+  const price = row.querySelector('.item-price');
   const amount = row.querySelector('.item-amount');
 
   if (item) {
-    description.value = item.description || '';
-    hsn.value = item.hsn_code || '';
+    name.value = item.item_name || '';
     qty.value = item.quantity ?? 1;
-    unit.value = item.unit || '';
-    rate.value = item.rate ?? 0;
+    price.value = item.price ?? 0;
   }
 
   function recalcRow() {
-    const total = (Number(qty.value) || 0) * (Number(rate.value) || 0);
+    const total = (Number(qty.value) || 0) * (Number(price.value) || 0);
     amount.textContent = formatMoney(total);
     recalcGrandTotal();
   }
 
   qty.addEventListener('input', recalcRow);
-  rate.addEventListener('input', recalcRow);
+  price.addEventListener('input', recalcRow);
   row.querySelector('.remove-item-btn').addEventListener('click', () => {
     row.remove();
+    renumberItemRows();
     recalcGrandTotal();
   });
 
   itemsBody.appendChild(row);
+  renumberItemRows();
   recalcRow();
 }
 
@@ -181,8 +184,8 @@ function recalcGrandTotal() {
   let total = 0;
   rows.forEach((row) => {
     const qty = Number(row.querySelector('.item-qty').value) || 0;
-    const rate = Number(row.querySelector('.item-rate').value) || 0;
-    total += qty * rate;
+    const price = Number(row.querySelector('.item-price').value) || 0;
+    total += qty * price;
   });
   const el = document.getElementById('grand-total');
   if (el) el.textContent = formatMoney(total);
@@ -192,14 +195,12 @@ function collectItems() {
   const rows = document.querySelectorAll('#items-body .item-row');
   const items = [];
   rows.forEach((row) => {
-    const description = row.querySelector('.item-description').value.trim();
-    if (!description) return;
+    const item_name = row.querySelector('.item-name').value.trim();
+    if (!item_name) return;
     items.push({
-      description,
-      hsn_code: row.querySelector('.item-hsn').value.trim(),
+      item_name,
       quantity: Number(row.querySelector('.item-qty').value) || 0,
-      unit: row.querySelector('.item-unit').value.trim(),
-      rate: Number(row.querySelector('.item-rate').value) || 0,
+      price: Number(row.querySelector('.item-price').value) || 0,
     });
   });
   return items;
@@ -247,12 +248,13 @@ async function renderForm(id) {
     dateInput.value = existing.challan_date;
     dateInput.disabled = true;
     serialInput.value = existing.serial_number;
-    document.getElementById('f-party-name').value = existing.party_name;
-    document.getElementById('f-party-gstin').value = existing.party_gstin;
-    document.getElementById('f-party-address').value = existing.party_address;
-    document.getElementById('f-vehicle').value = existing.vehicle_number;
-    document.getElementById('f-place').value = existing.place_of_supply;
-    document.getElementById('f-remarks').value = existing.remarks;
+    document.getElementById('f-from-name').value = existing.from_contact_name;
+    document.getElementById('f-from-mobile').value = existing.from_contact_mobile;
+    document.getElementById('f-from-address').value = existing.from_address;
+    document.getElementById('f-to-name').value = existing.to_contact_name;
+    document.getElementById('f-to-email').value = existing.to_email;
+    document.getElementById('f-to-mobile').value = existing.to_mobile;
+    document.getElementById('f-to-address').value = existing.to_address;
     if (existing.items.length) {
       existing.items.forEach(addItemRow);
     } else {
@@ -276,12 +278,13 @@ async function renderForm(id) {
     const payload = {
       challan_date: dateInput.value,
       location_code: locationSelect.value,
-      party_name: document.getElementById('f-party-name').value.trim(),
-      party_gstin: document.getElementById('f-party-gstin').value.trim(),
-      party_address: document.getElementById('f-party-address').value.trim(),
-      vehicle_number: document.getElementById('f-vehicle').value.trim(),
-      place_of_supply: document.getElementById('f-place').value.trim(),
-      remarks: document.getElementById('f-remarks').value.trim(),
+      from_contact_name: document.getElementById('f-from-name').value.trim(),
+      from_contact_mobile: document.getElementById('f-from-mobile').value.trim(),
+      from_address: document.getElementById('f-from-address').value.trim(),
+      to_contact_name: document.getElementById('f-to-name').value.trim(),
+      to_email: document.getElementById('f-to-email').value.trim(),
+      to_mobile: document.getElementById('f-to-mobile').value.trim(),
+      to_address: document.getElementById('f-to-address').value.trim(),
       items,
     };
     try {
@@ -301,6 +304,15 @@ async function renderForm(id) {
 
 // ---------- Settings view ----------
 
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 async function renderSettings() {
   const tpl = document.getElementById('tpl-settings');
   app.replaceChildren(tpl.content.cloneNode(true));
@@ -312,6 +324,25 @@ async function renderSettings() {
   document.getElementById('s-company-address').value = settings.company_address;
   document.getElementById('s-padding').value = settings.seq_padding;
 
+  let currentLogo = settings.company_logo || '';
+  const logoPreview = document.getElementById('s-logo-preview');
+  function refreshLogoPreview() {
+    if (currentLogo) {
+      logoPreview.src = currentLogo;
+      logoPreview.hidden = false;
+    } else {
+      logoPreview.hidden = true;
+    }
+  }
+  refreshLogoPreview();
+
+  document.getElementById('s-logo-file').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    currentLogo = await readFileAsDataURL(file);
+    refreshLogoPreview();
+  });
+
   document.getElementById('location-list').innerHTML = locations
     .map((l) => `<li>${escapeHtml(l.name)} &mdash; <strong>${escapeHtml(l.code)}</strong></li>`)
     .join('');
@@ -322,6 +353,7 @@ async function renderSettings() {
       company_name: document.getElementById('s-company-name').value.trim(),
       company_gstin: document.getElementById('s-company-gstin').value.trim(),
       company_address: document.getElementById('s-company-address').value.trim(),
+      company_logo: currentLogo,
       seq_padding: Number(document.getElementById('s-padding').value) || 2,
     };
     try {

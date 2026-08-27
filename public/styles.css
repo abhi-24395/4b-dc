@@ -224,6 +224,17 @@ input[readonly] {
   font-size: 0.9rem;
 }
 
+.logo-preview {
+  max-width: 120px;
+  max-height: 120px;
+  margin-top: 10px;
+  display: block;
+}
+
+.logo-preview[hidden] {
+  display: none;
+}
+
 .toast {
   position: fixed;
   bottom: 20px;

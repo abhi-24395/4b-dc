@@ -28,8 +28,7 @@
           <tr>
             <th>Serial No.</th>
             <th>Date</th>
-            <th>Party</th>
-            <th>Vehicle No.</th>
+            <th>To</th>
             <th>Amount</th>
             <th></th>
           </tr>
@@ -60,27 +59,41 @@
         </div>
 
         <fieldset>
-          <legend>Party (Consignee) Details</legend>
+          <legend>From</legend>
           <div class="form-grid">
             <label>
-              Party Name *
-              <input type="text" id="f-party-name" required />
+              Contact Person Name
+              <input type="text" id="f-from-name" />
             </label>
             <label>
-              GSTIN
-              <input type="text" id="f-party-gstin" />
+              Contact Person Mobile
+              <input type="text" id="f-from-mobile" />
             </label>
             <label class="span-2">
               Address
-              <textarea id="f-party-address" rows="2"></textarea>
+              <textarea id="f-from-address" rows="2"></textarea>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>To</legend>
+          <div class="form-grid">
+            <label>
+              Contact Person Name *
+              <input type="text" id="f-to-name" required />
             </label>
             <label>
-              Vehicle Number
-              <input type="text" id="f-vehicle" />
+              E-mail
+              <input type="email" id="f-to-email" />
             </label>
             <label>
-              Place of Supply
-              <input type="text" id="f-place" />
+              Contact Person Mobile
+              <input type="text" id="f-to-mobile" placeholder="+91 ..., +91 ..." />
+            </label>
+            <label class="span-2">
+              Address
+              <textarea id="f-to-address" rows="2"></textarea>
             </label>
           </div>
         </fieldset>
@@ -90,11 +103,10 @@
           <table class="items-table">
             <thead>
               <tr>
-                <th>Description *</th>
-                <th>HSN/SAC</th>
+                <th>SL No</th>
+                <th>Item Name *</th>
                 <th>Qty</th>
-                <th>Unit</th>
-                <th>Rate</th>
+                <th>Price</th>
                 <th>Amount</th>
                 <th></th>
               </tr>
@@ -104,11 +116,6 @@
           <button type="button" id="add-item-btn" class="btn-secondary">+ Add Item</button>
           <div class="totals">Total: <strong id="grand-total">0.00</strong></div>
         </fieldset>
-
-        <label>
-          Remarks
-          <textarea id="f-remarks" rows="2"></textarea>
-        </label>
 
         <div class="form-actions">
           <button type="submit" class="btn-primary">Save Challan</button>
@@ -120,11 +127,10 @@
 
   <template id="tpl-item-row">
     <tr class="item-row">
-      <td><input type="text" class="item-description" required /></td>
-      <td><input type="text" class="item-hsn" /></td>
+      <td class="item-sl"></td>
+      <td><input type="text" class="item-name" required /></td>
       <td><input type="number" class="item-qty" step="any" min="0" value="1" /></td>
-      <td><input type="text" class="item-unit" /></td>
-      <td><input type="number" class="item-rate" step="any" min="0" value="0" /></td>
+      <td><input type="number" class="item-price" step="any" min="0" value="0" /></td>
       <td class="item-amount">0.00</td>
       <td><button type="button" class="remove-item-btn" title="Remove item">&times;</button></td>
     </tr>
@@ -149,14 +155,19 @@
               Address
               <textarea id="s-company-address" rows="2"></textarea>
             </label>
+            <label class="span-2">
+              Logo
+              <input type="file" id="s-logo-file" accept="image/*" />
+            </label>
           </div>
+          <img id="s-logo-preview" alt="Logo preview" class="logo-preview" />
         </fieldset>
 
         <fieldset>
           <legend>Auto Serial Number</legend>
           <p class="hint">
             Serials are generated automatically as <code>DDMMYYYY/LOCATION/SEQ</code>,
-            e.g. <code>11082026/BLR/01</code>. The sequence number resets to 01 for
+            e.g. <code>26082026/BLR/01</code>. The sequence number resets to 01 for
             each location at the start of every day.
           </p>
           <div class="form-grid">

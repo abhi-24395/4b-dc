@@ -16,6 +16,7 @@ db.exec(`
     company_name TEXT NOT NULL DEFAULT '',
     company_address TEXT NOT NULL DEFAULT '',
     company_gstin TEXT NOT NULL DEFAULT '',
+    company_logo TEXT NOT NULL DEFAULT '',
     seq_padding INTEGER NOT NULL DEFAULT 2
   );
 
@@ -25,28 +26,32 @@ db.exec(`
     location_code TEXT NOT NULL REFERENCES locations(code),
     seq INTEGER NOT NULL,
     challan_date TEXT NOT NULL,
-    party_name TEXT NOT NULL,
-    party_address TEXT NOT NULL DEFAULT '',
-    party_gstin TEXT NOT NULL DEFAULT '',
-    vehicle_number TEXT NOT NULL DEFAULT '',
-    place_of_supply TEXT NOT NULL DEFAULT '',
-    remarks TEXT NOT NULL DEFAULT '',
+    from_contact_name TEXT NOT NULL DEFAULT '',
+    from_contact_mobile TEXT NOT NULL DEFAULT '',
+    from_address TEXT NOT NULL DEFAULT '',
+    to_contact_name TEXT NOT NULL,
+    to_email TEXT NOT NULL DEFAULT '',
+    to_mobile TEXT NOT NULL DEFAULT '',
+    to_address TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
   CREATE TABLE IF NOT EXISTS challan_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     challan_id INTEGER NOT NULL REFERENCES challans(id) ON DELETE CASCADE,
-    description TEXT NOT NULL,
-    hsn_code TEXT NOT NULL DEFAULT '',
+    item_name TEXT NOT NULL,
     quantity REAL NOT NULL DEFAULT 0,
-    unit TEXT NOT NULL DEFAULT '',
-    rate REAL NOT NULL DEFAULT 0,
+    price REAL NOT NULL DEFAULT 0,
     amount REAL NOT NULL DEFAULT 0
   );
 `);
 
-db.prepare(`INSERT OR IGNORE INTO settings (id, seq_padding) VALUES (1, 2)`).run();
+db.prepare(
+  `INSERT OR IGNORE INTO settings (id, company_name, company_address, company_gstin, company_logo, seq_padding)
+   VALUES (1, '4Brains Technologies Private Limited',
+     'Akshar Business Park, T0067, Phase 2, Sector 25, Vashi, Navi Mumbai, Maharashtra 400703',
+     '27AABCZ8509M2ZO', '/assets/logo.png', 2)`
+).run();
 
 const seedLocation = db.prepare('INSERT OR IGNORE INTO locations (code, name) VALUES (?, ?)');
 seedLocation.run('BLR', 'Bangalore');
@@ -65,19 +70,21 @@ function getSettings() {
   return db.prepare('SELECT * FROM settings WHERE id = 1').get();
 }
 
-function updateSettings({ company_name, company_address, company_gstin, seq_padding }) {
+function updateSettings({ company_name, company_address, company_gstin, company_logo, seq_padding }) {
   const current = getSettings();
   db.prepare(
     `UPDATE settings SET
       company_name = @company_name,
       company_address = @company_address,
       company_gstin = @company_gstin,
+      company_logo = @company_logo,
       seq_padding = @seq_padding
      WHERE id = 1`
   ).run({
     company_name: company_name ?? current.company_name,
     company_address: company_address ?? current.company_address,
     company_gstin: company_gstin ?? current.company_gstin,
+    company_logo: company_logo ?? current.company_logo,
     seq_padding: seq_padding ?? current.seq_padding,
   });
   return getSettings();
@@ -109,24 +116,22 @@ function previewNextSerial(locationCode, challanDate) {
 
 function computeItemAmount(item) {
   const qty = Number(item.quantity) || 0;
-  const rate = Number(item.rate) || 0;
-  return Math.round(qty * rate * 100) / 100;
+  const price = Number(item.price) || 0;
+  return Math.round(qty * price * 100) / 100;
 }
 
 function insertItems(challanId, items) {
   const insertItem = db.prepare(
-    `INSERT INTO challan_items (challan_id, description, hsn_code, quantity, unit, rate, amount)
-     VALUES (@challan_id, @description, @hsn_code, @quantity, @unit, @rate, @amount)`
+    `INSERT INTO challan_items (challan_id, item_name, quantity, price, amount)
+     VALUES (@challan_id, @item_name, @quantity, @price, @amount)`
   );
   for (const item of items || []) {
-    if (!item.description) continue;
+    if (!item.item_name) continue;
     insertItem.run({
       challan_id: challanId,
-      description: item.description,
-      hsn_code: item.hsn_code || '',
+      item_name: item.item_name,
       quantity: Number(item.quantity) || 0,
-      unit: item.unit || '',
-      rate: Number(item.rate) || 0,
+      price: Number(item.price) || 0,
       amount: computeItemAmount(item),
     });
   }
@@ -144,20 +149,25 @@ const createChallan = db.transaction((data) => {
   const info = db
     .prepare(
       `INSERT INTO challans
-        (serial_number, location_code, seq, challan_date, party_name, party_address, party_gstin, vehicle_number, place_of_supply, remarks)
-       VALUES (@serial_number, @location_code, @seq, @challan_date, @party_name, @party_address, @party_gstin, @vehicle_number, @place_of_supply, @remarks)`
+        (serial_number, location_code, seq, challan_date,
+         from_contact_name, from_contact_mobile, from_address,
+         to_contact_name, to_email, to_mobile, to_address)
+       VALUES (@serial_number, @location_code, @seq, @challan_date,
+         @from_contact_name, @from_contact_mobile, @from_address,
+         @to_contact_name, @to_email, @to_mobile, @to_address)`
     )
     .run({
       serial_number,
       location_code: data.location_code,
       seq: next_seq,
       challan_date: data.challan_date,
-      party_name: data.party_name,
-      party_address: data.party_address || '',
-      party_gstin: data.party_gstin || '',
-      vehicle_number: data.vehicle_number || '',
-      place_of_supply: data.place_of_supply || '',
-      remarks: data.remarks || '',
+      from_contact_name: data.from_contact_name || '',
+      from_contact_mobile: data.from_contact_mobile || '',
+      from_address: data.from_address || '',
+      to_contact_name: data.to_contact_name,
+      to_email: data.to_email || '',
+      to_mobile: data.to_mobile || '',
+      to_address: data.to_address || '',
     });
 
   const challanId = info.lastInsertRowid;
@@ -171,21 +181,23 @@ const createChallan = db.transaction((data) => {
 const updateChallan = db.transaction((id, data) => {
   db.prepare(
     `UPDATE challans SET
-      party_name = @party_name,
-      party_address = @party_address,
-      party_gstin = @party_gstin,
-      vehicle_number = @vehicle_number,
-      place_of_supply = @place_of_supply,
-      remarks = @remarks
+      from_contact_name = @from_contact_name,
+      from_contact_mobile = @from_contact_mobile,
+      from_address = @from_address,
+      to_contact_name = @to_contact_name,
+      to_email = @to_email,
+      to_mobile = @to_mobile,
+      to_address = @to_address
      WHERE id = @id`
   ).run({
     id,
-    party_name: data.party_name,
-    party_address: data.party_address || '',
-    party_gstin: data.party_gstin || '',
-    vehicle_number: data.vehicle_number || '',
-    place_of_supply: data.place_of_supply || '',
-    remarks: data.remarks || '',
+    from_contact_name: data.from_contact_name || '',
+    from_contact_mobile: data.from_contact_mobile || '',
+    from_address: data.from_address || '',
+    to_contact_name: data.to_contact_name,
+    to_email: data.to_email || '',
+    to_mobile: data.to_mobile || '',
+    to_address: data.to_address || '',
   });
 
   db.prepare('DELETE FROM challan_items WHERE challan_id = ?').run(id);
@@ -201,7 +213,7 @@ function listChallans({ search } = {}) {
          FROM challans c
          LEFT JOIN challan_items i ON i.challan_id = c.id
          LEFT JOIN locations l ON l.code = c.location_code
-         WHERE c.serial_number LIKE @q OR c.party_name LIKE @q
+         WHERE c.serial_number LIKE @q OR c.to_contact_name LIKE @q
          GROUP BY c.id
          ORDER BY c.id DESC`
       )

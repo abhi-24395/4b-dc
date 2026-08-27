@@ -5,7 +5,7 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/locations', (req, res) => {
@@ -17,11 +17,11 @@ app.get('/api/settings', (req, res) => {
 });
 
 app.put('/api/settings', (req, res) => {
-  const { company_name, company_address, company_gstin, seq_padding } = req.body;
+  const { company_name, company_address, company_gstin, company_logo, seq_padding } = req.body;
   if (seq_padding !== undefined && (!Number.isInteger(seq_padding) || seq_padding < 1 || seq_padding > 10)) {
     return res.status(400).json({ error: 'seq_padding must be an integer between 1 and 10' });
   }
-  const updated = db.updateSettings({ company_name, company_address, company_gstin, seq_padding });
+  const updated = db.updateSettings({ company_name, company_address, company_gstin, company_logo, seq_padding });
   res.json(updated);
 });
 
@@ -54,10 +54,10 @@ function validateChallanPayload(body) {
   if (!body.location_code || !db.getLocation(body.location_code)) {
     return 'a valid location_code is required';
   }
-  if (!body.party_name || !body.party_name.trim()) return 'party_name is required';
+  if (!body.to_contact_name || !body.to_contact_name.trim()) return 'to_contact_name is required';
   if (!Array.isArray(body.items) || body.items.length === 0) return 'at least one item is required';
   for (const item of body.items) {
-    if (!item.description || !item.description.trim()) return 'each item requires a description';
+    if (!item.item_name || !item.item_name.trim()) return 'each item requires a name';
   }
   return null;
 }
@@ -72,15 +72,15 @@ app.post('/api/challans', (req, res) => {
 app.put('/api/challans/:id', (req, res) => {
   const existing = db.getChallan(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Challan not found' });
-  if (!req.body.party_name || !req.body.party_name.trim()) {
-    return res.status(400).json({ error: 'party_name is required' });
+  if (!req.body.to_contact_name || !req.body.to_contact_name.trim()) {
+    return res.status(400).json({ error: 'to_contact_name is required' });
   }
   if (!Array.isArray(req.body.items) || req.body.items.length === 0) {
     return res.status(400).json({ error: 'at least one item is required' });
   }
   for (const item of req.body.items) {
-    if (!item.description || !item.description.trim()) {
-      return res.status(400).json({ error: 'each item requires a description' });
+    if (!item.item_name || !item.item_name.trim()) {
+      return res.status(400).json({ error: 'each item requires a name' });
     }
   }
   db.updateChallan(req.params.id, req.body);

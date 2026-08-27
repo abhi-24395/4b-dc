@@ -11,6 +11,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 // rejections to Express's error handler instead of leaving requests hanging.
 const wrap = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 
+// TEMPORARY: lists env var names (never values) matching common DB var
+// patterns, to identify what a storage integration actually injected.
+app.get('/api/_debug/env', (req, res) => {
+  const names = Object.keys(process.env).filter((k) => /POSTGRES|DATABASE|PRISMA|PG|STORAGE|NEON/i.test(k));
+  res.json({ names });
+});
+
 app.get('/api/locations', wrap(async (req, res) => {
   res.json(await db.listLocations());
 }));

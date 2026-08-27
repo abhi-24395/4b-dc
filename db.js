@@ -1,17 +1,24 @@
 const { Pool } = require('pg');
 
-const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
-if (!connectionString) {
-  throw new Error('POSTGRES_URL (or DATABASE_URL) environment variable is required');
+// Lazy: resolved on first query rather than at module load, so the rest of
+// the app (e.g. a diagnostics route) can still run if this is misconfigured.
+let pool = null;
+function getPool() {
+  if (!pool) {
+    const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+    if (!connectionString) {
+      throw new Error('POSTGRES_URL (or DATABASE_URL) environment variable is required');
+    }
+    // Hosted Postgres (e.g. Neon, used in production) requires SSL; a local
+    // Postgres instance for development typically doesn't have it enabled.
+    const isLocal = /localhost|127\.0\.0\.1/.test(connectionString);
+    pool = new Pool({
+      connectionString,
+      ssl: isLocal ? false : { rejectUnauthorized: false },
+    });
+  }
+  return pool;
 }
-
-// Hosted Postgres (e.g. Neon, used in production) requires SSL; a local
-// Postgres instance for development typically doesn't have it enabled.
-const isLocal = /localhost|127\.0\.0\.1/.test(connectionString);
-const pool = new Pool({
-  connectionString,
-  ssl: isLocal ? false : { rejectUnauthorized: false },
-});
 
 // Runs once per process (cached across warm serverless invocations) to create
 // the schema and seed fixed reference data if it isn't already there.
@@ -19,7 +26,7 @@ let initPromise = null;
 function ensureInit() {
   if (!initPromise) {
     initPromise = (async () => {
-      const client = await pool.connect();
+      const client = await getPool().connect();
       try {
         await client.query(`
           CREATE TABLE IF NOT EXISTS locations (
@@ -93,26 +100,26 @@ function ensureInit() {
 
 async function listLocations() {
   await ensureInit();
-  const { rows } = await pool.query('SELECT * FROM locations ORDER BY name');
+  const { rows } = await getPool().query('SELECT * FROM locations ORDER BY name');
   return rows;
 }
 
 async function getLocation(code) {
   await ensureInit();
-  const { rows } = await pool.query('SELECT * FROM locations WHERE code = $1', [code]);
+  const { rows } = await getPool().query('SELECT * FROM locations WHERE code = $1', [code]);
   return rows[0] || null;
 }
 
 async function getSettings() {
   await ensureInit();
-  const { rows } = await pool.query('SELECT * FROM settings WHERE id = 1');
+  const { rows } = await getPool().query('SELECT * FROM settings WHERE id = 1');
   return rows[0];
 }
 
 async function updateSettings({ company_name, company_address, company_gstin, company_logo, seq_padding }) {
   await ensureInit();
   const current = await getSettings();
-  await pool.query(
+  await getPool().query(
     `UPDATE settings SET
       company_name = $1, company_address = $2, company_gstin = $3, company_logo = $4, seq_padding = $5
      WHERE id = 1`,
@@ -144,7 +151,7 @@ function formatSerial(challanDate, locationCode, seq, padding) {
 async function previewNextSerial(locationCode, challanDate) {
   await ensureInit();
   const settings = await getSettings();
-  const { rows } = await pool.query(
+  const { rows } = await getPool().query(
     'SELECT last_seq FROM serial_counters WHERE location_code = $1 AND challan_date = $2',
     [locationCode, challanDate]
   );
@@ -175,7 +182,7 @@ async function insertItems(client, challanId, items) {
 // same transaction.
 async function createChallan(data) {
   await ensureInit();
-  const client = await pool.connect();
+  const client = await getPool().connect();
   try {
     await client.query('BEGIN');
 
@@ -232,7 +239,7 @@ async function createChallan(data) {
 // serial's embedded date/location wrong.
 async function updateChallan(id, data) {
   await ensureInit();
-  const client = await pool.connect();
+  const client = await getPool().connect();
   try {
     await client.query('BEGIN');
     await client.query(
@@ -271,14 +278,14 @@ async function listChallans({ search } = {}) {
   const groupOrder = `GROUP BY c.id, l.name ORDER BY c.id DESC`;
 
   const { rows } = search
-    ? await pool.query(`${base} WHERE c.serial_number ILIKE $1 OR c.to_contact_name ILIKE $1 ${groupOrder}`, [`%${search}%`])
-    : await pool.query(`${base} ${groupOrder}`);
+    ? await getPool().query(`${base} WHERE c.serial_number ILIKE $1 OR c.to_contact_name ILIKE $1 ${groupOrder}`, [`%${search}%`])
+    : await getPool().query(`${base} ${groupOrder}`);
   return rows;
 }
 
 async function getChallan(id) {
   await ensureInit();
-  const { rows } = await pool.query(
+  const { rows } = await getPool().query(
     `SELECT c.*, l.name AS location_name FROM challans c
      LEFT JOIN locations l ON l.code = c.location_code
      WHERE c.id = $1`,
@@ -286,13 +293,13 @@ async function getChallan(id) {
   );
   const challan = rows[0];
   if (!challan) return null;
-  const itemsRes = await pool.query('SELECT * FROM challan_items WHERE challan_id = $1 ORDER BY id', [id]);
+  const itemsRes = await getPool().query('SELECT * FROM challan_items WHERE challan_id = $1 ORDER BY id', [id]);
   return { ...challan, items: itemsRes.rows };
 }
 
 async function deleteChallan(id) {
   await ensureInit();
-  await pool.query('DELETE FROM challans WHERE id = $1', [id]);
+  await getPool().query('DELETE FROM challans WHERE id = $1', [id]);
 }
 
 module.exports = {

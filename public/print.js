@@ -35,14 +35,16 @@ async function main() {
 
   content.innerHTML = `
     <div class="challan-box">
-      <div class="serial-badge">${escapeHtml(challan.serial_number)}</div>
       <div class="company-row">
         <div class="company-info">
           <h1>${escapeHtml(settings.company_name)}</h1>
           ${settings.company_gstin ? `<p class="gstin">${escapeHtml(settings.company_gstin)}</p>` : ''}
           <p class="address">${escapeHtml(settings.company_address)}</p>
         </div>
-        ${settings.company_logo ? `<img class="company-logo" src="${escapeHtml(settings.company_logo)}" alt="Logo" />` : ''}
+        <div class="company-logo-block">
+          ${settings.company_logo ? `<img class="company-logo" src="${escapeHtml(settings.company_logo)}" alt="Logo" />` : ''}
+          <div class="serial-badge">DC Number: ${escapeHtml(challan.serial_number)}</div>
+        </div>
       </div>
 
       <div class="contact-row">

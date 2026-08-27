@@ -34,8 +34,8 @@ async function main() {
   document.title = `Delivery Challan ${challan.serial_number}`;
 
   content.innerHTML = `
-    <div class="serial-line">${escapeHtml(challan.serial_number)}</div>
     <div class="challan-box">
+      <div class="serial-badge">${escapeHtml(challan.serial_number)}</div>
       <div class="company-row">
         <div class="company-info">
           <h1>${escapeHtml(settings.company_name)}</h1>

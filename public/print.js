@@ -41,10 +41,11 @@ async function main() {
           ${settings.company_gstin ? `<p class="gstin">${escapeHtml(settings.company_gstin)}</p>` : ''}
           <p class="address">${escapeHtml(settings.company_address)}</p>
         </div>
-        <div class="company-logo-block">
-          ${settings.company_logo ? `<img class="company-logo" src="${escapeHtml(settings.company_logo)}" alt="Logo" />` : ''}
-          <div class="serial-badge">DC Number: ${escapeHtml(challan.serial_number)}</div>
-        </div>
+        ${settings.company_logo ? `<img class="company-logo" src="${escapeHtml(settings.company_logo)}" alt="Logo" />` : ''}
+      </div>
+
+      <div class="dc-row">
+        <div class="serial-badge">DC Number: ${escapeHtml(challan.serial_number)}</div>
       </div>
 
       <div class="contact-row">

@@ -33,6 +33,7 @@ async function main() {
 
   content.innerHTML = `
     <div class="challan-box">
+      <div class="doc-title">DELIVERY CHALLAN</div>
       <div class="company-row">
         <div class="company-info">
           <h1>${escapeHtml(settings.company_name)}</h1>
